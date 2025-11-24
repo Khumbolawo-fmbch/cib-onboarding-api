@@ -7,6 +7,8 @@ import {
 } from "@playwright/test";
 import { generateToken } from "./helpers/generate-token";
 
+let createdAccTypeId: string | number | undefined;
+
 test("create, retrieve, update, and delete an account type", async ({}) => {
   const apiRequestContext = await playwrightRequest.newContext({
     ignoreHTTPSErrors: true,
@@ -16,16 +18,67 @@ test("create, retrieve, update, and delete an account type", async ({}) => {
   const token = await generateToken(apiRequestContext);
 
   // Create an account type
-  const response = await apiRequestContext.post("/api/account-type", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    data: {
-      name: "Savings Account",
-      image: "",
-      description: "A savings account type",
-    },
-  });
+  const createdAccType = await apiRequestContext.post(
+    "/api/v1/cib-onboarding/account_type/account_type/add/",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      data: {
+        name: "Test Account Type 1",
+        image: "string",
+        description: "Test account type description for account type api",
+      },
+    }
+  );
+
+  expect(createdAccType.ok()).toBeTruthy();
+  // Extract the created record's id from the response JSON
+  const createdBody = await createdAccType.json();
+  createdAccTypeId = createdBody?.data?.id ?? createdBody?.id;
+  expect(createdAccTypeId).toBeTruthy();
+
+  // check for the specifically created account typee
+  const testAccType = await apiRequestContext.get(
+    `/api/v1/cib-onboarding/account_type/account_type/${createdAccTypeId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  expect(testAccType.ok()).toBeTruthy();
+
+  //update the account type
+  const updatedAccType = await apiRequestContext.post(
+    `/api/v1/cib-onboarding/account_type/account_type/update/${createdAccTypeId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      data: {
+        name: "Test Account Type Updated",
+        image: "",
+        description:
+          "Test account type description for account type api updated by playwright",
+      },
+    }
+  );
+
+  expect(updatedAccType.ok()).toBeTruthy();
+  expect(updatedAccType.body).toContain("Test Account Type Updated");
+
+  //delete the account type
+  const deleteAccType = await apiRequestContext.post(
+    `/api/v1/cib-onboarding/account_type/account_type/delete/${createdAccTypeId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  expect(deleteAccType.ok()).toBeTruthy();
 });
 
 test("confirm account type entity group mapping - limited companies", async ({}) => {
