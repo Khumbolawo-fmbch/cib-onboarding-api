@@ -220,7 +220,7 @@ test("confirm account type entity group mapping - businesses", async ({}) => {
     (g: any) => g.name
   );
   expect(soleProprietorEntityNames).toEqual(
-    expect.arrayContaining(["SOLE PROPRIETOR)"])
+    expect.arrayContaining(["SOLE PROPRIETOR"])
   );
 
   // PARTNERSHIP -> entity_groups
@@ -231,5 +231,62 @@ test("confirm account type entity group mapping - businesses", async ({}) => {
   );
   expect(partnershipEntityNames).toEqual(
     expect.arrayContaining(["PARTNERSHIP"])
+  );
+});
+
+test("confirm account type entity group mapping - government entity", async ({}) => {
+  const apiRequestContext = await playwrightRequest.newContext({
+    ignoreHTTPSErrors: true,
+    baseURL: process.env.API_BASE_URL,
+  });
+  // Generate authentication token
+  const token = await generateToken(apiRequestContext);
+
+  // Check limited companies entity group mapping
+  const response = await apiRequestContext.get(
+    "/api/v1/cib-onboarding/account_type/company-types/4",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  const responseData = await response.json();
+
+  // top-level company type names
+  const companyNames = responseData.map((c: any) => c.name);
+  expect(companyNames).toEqual(
+    expect.arrayContaining(["STATE OWNED ENTITY", "SEMI-GOVERNMENT ENTITY"])
+  );
+
+  // STATE OWNED ENTITY -> entity_groups
+  const stateOwnedEntity = responseData.find(
+    (c: any) => c.name === "STATE OWNED ENTITY"
+  );
+  expect(stateOwnedEntity).toBeTruthy();
+  const stateOwnedEntityNames = (stateOwnedEntity.entity_groups || []).map(
+    (g: any) => g.name
+  );
+  expect(stateOwnedEntityNames).toEqual(
+    expect.arrayContaining([
+      "GOVERNMENT ORGANISATION",
+      "GOVERNMENT DEPARTMENT",
+      "GOVERNMENT MINISTRY",
+      "LOCAL AUTHORITY",
+      "LOCAL COUNCIL",
+      "EMBASSIES",
+    ])
+  );
+
+  // SEMI-GOVERNMENT ENTITY -> entity_groups
+  const semiGovernmentEntity = responseData.find(
+    (c: any) => c.name === "SEMI-GOVERNMENT ENTITY"
+  );
+  expect(semiGovernmentEntity).toBeTruthy();
+  const semiGovernmentEntityNames = (
+    semiGovernmentEntity.entity_groups || []
+  ).map((g: any) => g.name);
+  expect(semiGovernmentEntityNames).toEqual(
+    expect.arrayContaining(["STATUTORY ENTITY", "PARASTATALS"])
   );
 });
