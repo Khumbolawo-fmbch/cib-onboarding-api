@@ -66,4 +66,22 @@ test.describe.serial("Currency API", async () => {
   });
 
   //   update previously created currency
+  test("update created currency", async ({ request, baseURL }) => {
+    const updatedData = {
+      name: createdCurrency.name + " Updated",
+      short_hand: createdCurrency.short_hand + "U",
+      symbol: createdCurrency.symbol + "U",
+    };
+
+    const response = await request.put(
+      `${baseURL}api/v1/cib-onboarding/currency/update/${createdCurrencyId}/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        data: updatedData,
+      }
+    );
+    expect(response.ok()).toBeTruthy();
+  });
 });
