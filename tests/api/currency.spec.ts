@@ -1,36 +1,24 @@
 // tests for the currency API
 import { test, expect, request as playwrightRequest } from "@playwright/test";
 import { generateToken } from "./helpers/generate-token";
-import { request } from "https";
 
-test.describe("Currency API", () => {
-  test("get list of currencies", async ({ request, baseURL }) => {
-    // Generate authentication token
-    const token = await generateToken(request);
+test.describe.serial("Currency API", async () => {
+  let token: string;
+  let createdCurrencyId: number;
+  let createdCurrency: any;
 
-    // Make authenticated request to get currencies
-    const response = await request.get(
-      `${baseURL}api/v1/cib-onboarding/currency/get/`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    expect(response.ok()).toBeTruthy();
+  test.beforeAll(async ({ request, baseURL }) => {
+    // Generate authentication token before all tests
+    token = await generateToken(request);
 
-    const currencies = await response.json();
-    expect(Array.isArray(currencies)).toBe(true);
-    expect(currencies.length).toBeGreaterThan(0);
-  });
+    // create currency for all tests
 
-  //   create new currency
-  test("create new currency", async ({ request, baseURL }) => {
-    const token = await generateToken(request);
+    // generate unique suffix
+    const suffix = Date.now(); // or: require('crypto').randomUUID()
     const newCurrency = {
-      name: "Test Currency",
-      short_hand: "TC1",
-      symbol: "T$",
+      name: `Test Currency ${suffix}`,
+      short_hand: `TC${String(suffix).slice(-4)}`,
+      symbol: `T${String(suffix).slice(-2)}`,
     };
 
     const response = await request.post(
@@ -44,11 +32,37 @@ test.describe("Currency API", () => {
     );
     expect(response.ok()).toBeTruthy();
 
-    const createdCurrency = await response.json();
+    createdCurrency = await response.json();
     expect(createdCurrency).toMatchObject(newCurrency);
-    const createdCurrencyId = createdCurrency.id;
+    createdCurrencyId = createdCurrency.id;
     console.log(`Created currency with ID: ${createdCurrencyId}`);
-    return createdCurrencyId;
+    return createdCurrency;
+  });
+
+  test("get list of currencies", async ({ request, baseURL }) => {
+    // Make authenticated request to get currencies
+    const response = await request.get(
+      `${baseURL}api/v1/cib-onboarding/currency/get/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    expect(response.ok()).toBeTruthy();
+
+    const currencies = await response.json();
+
+    const found = currencies.find(
+      (c: any) =>
+        String(c.id) === String(createdCurrencyId) ||
+        c.name === createdCurrency.name
+    );
+    expect(found).toBeTruthy();
+
+    // `currencies` is an array; don't use toHaveProperty with an index string.
+    expect(Array.isArray(currencies)).toBe(true);
+    expect(currencies.length).toBeGreaterThan(0);
   });
 
   //   update previously created currency
